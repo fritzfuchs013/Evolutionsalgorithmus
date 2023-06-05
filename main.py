@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt             # Paket fürs grafische Darstellen
 from matplotlib import rc
 import math
 
+zaehler = 0
+
 """
 Optimierung Übung 3
 
@@ -30,24 +32,26 @@ def zf(xVec,optimierungsziel,ketten,nachkommen,start):
     :param xVec: Punkt im Eingangsraum
     :return: zugehörigen Zielfunktionswert
     """
-    zSpeicher = np.zeros(shape=(nachkommen, 1, ketten))
+    global zaehler
+    zaehler = zaehler + 1
+    zSpeicher = np.zeros(shape=(ketten, 1, nachkommen))
 
     if start:
         for i in range(ketten):
-            z = (math.sin(xVec[0, 0, i]) + 7 * (math.sin(xVec[0, 1, i])) ** 2 + 0.1 * (xVec[0,2,i]) ** 4 * math.sin(xVec[0, 0, i]))
+            z = (math.sin(xVec[i, 0, 0]) + 7 * (math.sin(xVec[i, 1, 0])) ** 2 + 0.1 * (xVec[i,2,0]) ** 4 * math.sin(xVec[i, 0, 0]))
             if optimierungsziel:
-                zSpeicher[0, 0, i] = z
+                zSpeicher[i, 0, 0] = z
             else:
-                zSpeicher[0, 0, i] = z * (-1)
+                zSpeicher[i, 0, 0] = z * (-1)
 
     else:
         for i in range(ketten):
             for j in range(nachkommen):
-                z = (math.sin(xVec[j,0,i]) + 7 * (math.sin(xVec[j,1,i]))**2 + 0.1 * (xVec[j,2,i])**4 * math.sin(xVec[j,0,i]))
+                z = (math.sin(xVec[i,0,j]) + 7 * (math.sin(xVec[i,1,j]))**2 + 0.1 * (xVec[i,2,j])**4 * math.sin(xVec[i,0,j]))
                 if optimierungsziel:
-                    zSpeicher[j,0,i] = z
+                    zSpeicher[i,0,j] = z
                 else:
-                    zSpeicher[j,0,i] = z*(-1)
+                    zSpeicher[i,0,j] = z*(-1)
 
     return zSpeicher
 
@@ -63,14 +67,15 @@ def suchBereichBestimmen(x, maxD, c1, c2, ketten):
     :return:
     """
 
-    maxSB = np.zeros(shape=(2,3,ketten))
-    minSB = np.zeros(shape=(2,3,ketten))
+    maxSB = np.zeros(shape=(ketten,3,2))
+    minSB = np.zeros(shape=(ketten,3,2))
     for i in range(ketten):
-        print(str(x))
-        maxSB[0, :, i] = x[0,:,i] - (0.5 * maxD * c1)
-        maxSB[1, :, i] = x[0,:,i] + (0.5 * maxD * c1)
-        minSB[0, :, i] = x[0,:,i] - (0.5 * maxD * c2)
-        minSB[1, :, i] = x[0,:,i] + (0.5 * maxD * c2)
+        maxSB[i, :, 0] = x[i,:,0] - (0.5 * maxD * c1)
+        maxSB[i, :, 1] = x[i,:,0] + (0.5 * maxD * c1)
+        minSB[i, :, 0] = x[i,:,0] - (0.5 * maxD * c2)
+        minSB[i, :, 1] = x[i,:,0] + (0.5 * maxD * c2)
+        # print('maxSB: ')
+        # print(str(maxSB))
 
     return maxSB, minSB
 
@@ -85,19 +90,20 @@ def getNachkomme(minSB, maxSB,ketten,nachkommen):
     """
 
     # Vektoren (für 3 dimensionalen Eingangsraum!)
-    xNachkomme = np.zeros(shape=(nachkommen, 3, ketten))
+    xNachkomme = np.zeros(shape=(ketten, 3, nachkommen))
 
     for i in range(ketten):
         for j in range(nachkommen):
-            xNachkomme[j, 0, i] = random.uniform(maxSB[0, 0, i], minSB[1, 0, i])
-            xNachkomme[j, 1, i] = random.uniform(minSB[0, 1, i], maxSB[1, 1, i])
-            xNachkomme[j, 2, i] = random.uniform(minSB[0, 2, i], maxSB[1, 2, i])
+            xNachkomme[i, 0, j] = random.uniform(maxSB[i, 0, 0], minSB[i, 0, 0])
+            xNachkomme[i, 1, j] = random.uniform(minSB[i, 1, 0], maxSB[i, 1, 0])
+            xNachkomme[i, 2, j] = random.uniform(minSB[i, 2, 0], maxSB[i, 2, 0])
 
-
+    # print('getNachkomme: ')
+    # print(str(xNachkomme))
     return xNachkomme
 
 
-def checkNB(xVec, nb, ketten, nachkommen):
+def checkNB(xVec, nb):
     """
     Prüfung der Nebenbedingungen, bei Verletzung der Nebenbedingung wird der Punkt auf NB zurückgeschoben
 
@@ -105,14 +111,14 @@ def checkNB(xVec, nb, ketten, nachkommen):
     :param nb: Nebenbedingung
     :return: (korrigierter) Vektor im Eingangsraum
     """
+    # print('xVec NB: ')
+    # print(str(xVec))
 
-    for i in range(ketten):
-        for j in range(nachkommen):
-            for k in range(3):
-                if xVec[j, k, i] < nb[k, 0]:
-                    xVec[j, k, i] = cp.deepcopy(nb[k, 0])
-                if xVec[j, k, i] > nb[k, 1]:
-                    xVec[j, k, i] = cp.deepcopy(nb[k, 1])
+    for k in range(3):
+        if xVec[k] < nb[k, 0]:
+            xVec[k] = cp.deepcopy(nb[k, 0])
+        if xVec[k] > nb[k, 1]:
+            xVec[k] = cp.deepcopy(nb[k, 1])
 
     return xVec
 
@@ -144,8 +150,9 @@ def checkNB(xVec, nb, ketten, nachkommen):
 #     plt.show()
 
 
+
 # Hauptprogramm
-# optimierungsziel ist true(min) oder false(max -> zf * (-1))
+# optimierungsziel ist True(min) oder False(max -> zf * (-1))
 # Anzahl an Iterationen
 # Ketten Anzahl (wieviele Startpunkte)
 # Nachkommen = Wieviel Kinder je Kette (vielfaches von 5), nur mit dem besten Weiter
@@ -155,7 +162,7 @@ def run_optimierung(optimierungsziel,iterationen,ketten,nachkommen):
         print('Die Anzahl der Nachkommen muss ein Vielfaches von 5 sein!')
         exit(1)
 
-    zfAlt = np.ndarray(shape=(1,2,ketten))
+    zfAlt = np.ndarray(shape=(ketten,2,1))
 
     # Definition der Nebenbedingungen (zulässiger Bereich)
     nb = np.ndarray(shape=(3, 2))
@@ -175,22 +182,26 @@ def run_optimierung(optimierungsziel,iterationen,ketten,nachkommen):
     c2 = 0.1
     c5 = 0.85
     c6 = 1.15
-    sbKleiner = 10*ketten
+    sbKleiner = 20*ketten
     sbKleinerCounter = 0
     zfverbesserungen = 0
 
 
     # Initiale Startpunkte
     start = True
-    x = np.ndarray(shape=(1, 3, ketten))
+    x = np.ndarray(shape=(ketten, 3, 1))
+    # print('start x: ')
+    # print(str(x))
     for i in range(ketten):
-        x[0,0,i] = random.uniform(nb[0, 0], nb[0, 1])
-        x[0,1,i] = random.uniform(nb[1, 0], nb[1, 1])
-        x[0,2,i] = random.uniform(nb[2, 0], nb[2, 1])
+        x[i,0,0] = random.uniform(nb[0, 0], nb[0, 1])
+        x[i,1,0] = random.uniform(nb[1, 0], nb[1, 1])
+        x[i,2,0] = random.uniform(nb[2, 0], nb[2, 1])
+    # print('nach random x: ')
+    # print(str(x))
 
     # Optimierungsschleife
     zfHistory = []
-    xHistory = np.zeros(shape=(iterationen, 3, ketten))
+    xHistory = np.zeros(shape=(ketten, 3, iterationen))
 
     for it in range(iterationen):
         print('Iteration: %i' %it)
@@ -199,8 +210,8 @@ def run_optimierung(optimierungsziel,iterationen,ketten,nachkommen):
         # Zielfunktionsauswertung
         if start:
             for i in range(ketten):
-                zfAlt[0,0,i] = zf(x,optimierungsziel,ketten,nachkommen,start)[0,0,i]
-                zfAlt[0,1,i] = 1
+                zfAlt[i,0,0] = zf(x,optimierungsziel,ketten,nachkommen,start)[i,0,0]
+                zfAlt[i,1,0] = 0
 
         start = False
         # Erzeugen eines Nachkommens
@@ -209,13 +220,23 @@ def run_optimierung(optimierungsziel,iterationen,ketten,nachkommen):
         # Vergleich Zielfunktion
         for i in range(ketten):
             for j in range(nachkommen):
-                if zf(xNeu,optimierungsziel,ketten,nachkommen,start)[j,0,i] < zfAlt[0,0,i]:
+                if zf(xNeu,optimierungsziel,ketten,nachkommen,start)[i,0,j] < zfAlt[i,0,0]:
                     zfverbesserungen = zfverbesserungen + 1
-                    zfAlt[0,0,i] = zf(xNeu,optimierungsziel,ketten,nachkommen,start)[j,0,i]
-                    zfAlt[0,1,i] = j
-                    x = cp.deepcopy(checkNB(xNeu, nb, ketten, nachkommen)[j,:,i])
+                    zfAlt[i,0,0] = zf(xNeu,optimierungsziel,ketten,nachkommen,start)[i,0,j]
+                    # print('step 1: ' + str(zf(xNeu,optimierungsziel,ketten,nachkommen,start)[i,0,j]) + ' j: ' + str(j) + ' i: ' + str(i))
+                    zfAlt[i,1,0] = j
+                    # print('zfAlt: ')
+                    # print(str(zfAlt))
+                    # print('x: ')
+                    # print(str(x))
+                    # print('x_neu: ')
+                    # print(str(xNeu))
+                    x[i, 0, 0] = xNeu[i, 0, j]
+                    x[i, 1, 0] = xNeu[i, 1, j]
+                    x[i, 2, 0] = xNeu[i, 2, j]
 
-                elif zf(xNeu,optimierungsziel,ketten,nachkommen,start)[j,0,i] >= zfAlt[0,0,i]:
+
+                elif zf(xNeu,optimierungsziel,ketten,nachkommen,start)[i,0,j] >= zfAlt[i,0,0]:
                     print('Keine Verbesserung der Zielfunktion!')
 
             if zfverbesserungen == 0:
@@ -227,15 +248,20 @@ def run_optimierung(optimierungsziel,iterationen,ketten,nachkommen):
 
             elif zfverbesserungen > 1:
                 maxD = cp.deepcopy(c6 * maxD)
+            # print('maxD: ')
+            # print(str(maxD))
 
             zfverbesserungen = 0
 
+            print('Zielfunktionsaufrufe: '+ str(zaehler))
+            print(''.join(['ZF-Wert: %e' % (zfAlt[i,0,0])]))
+            print('Suchpunkt: ')
+            print(str(x))
 
-            print(''.join(['ZF-Wert %e, Suchpunkt:' % (zfAlt[0,0,i]), str(x)]))
-            zfHistory.append(zfAlt[0,0,i])
+            zfHistory.append(zfAlt[i,0,0])
             # xHistory[it,:,i] = cp.deepcopy(x)
 
 
     #plotResults(zfHistory, xHistory)
 
-run_optimierung(True,50,1,5)
+run_optimierung(False,50,3,5)
